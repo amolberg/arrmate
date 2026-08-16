@@ -4,7 +4,13 @@
 
 Arrmate is an open-source, mobile-first management experience for Jellyfin ecosystems. It brings discovery, requests, downloads, library health, subtitle workflows, and service operations into one fast interface instead of making people jump between a pile of separate dashboards.
 
-> **Status:** first working vertical slice. The responsive requester and operator surfaces, role model, PostgreSQL schema, atomic quota core, and read-only qBittorrent adapter are implemented. Other integrations remain honest disconnected states.
+> **Status:** early working vertical slice. Jellyfin credential sign-in,
+> Jellyseerr-powered discovery/requests/quotas, responsive requester and
+> operator surfaces, the PostgreSQL domain foundation, and a read-only
+> qBittorrent adapter are implemented. Unconfigured integrations stay in
+> honest disconnected states.
+
+![Arrmate — your media stack, finally in one place](./public/assets/arrmate-social.png)
 
 ## The idea
 
@@ -23,20 +29,40 @@ Arrmate is inspired by the unified feel of nzb360, but the goal is a self-hosted
 - A visual system that feels calm, quick, modern, and proud to be open source.
 - No fake success states: when a service is disconnected or an action is unavailable, the UI should say so clearly.
 
-## Initial integration targets
+## Integration map
 
-The first adapter boundary should be designed around these services, without making the core domain model depend on one vendor:
+Arrmate keeps its domain model separate from any one vendor. The current target
+map is based on the real public service inventory used to shape this project:
 
 - Jellyfin
+- Jellyseerr
 - Sonarr
 - Radarr
 - Prowlarr
 - Bazarr
-- Seerr or Jellyseerr compatibility where useful
+- Lidarr
 - qBittorrent
-- Huntarr and other optional *arr ecosystem tools
+- Cleanuparr
+- Unmanic
+- FlareSolverr
+- JFA
 
-Future adapters may include download clients, indexers, media servers, notification providers, transcoding/health tools, and alternative implementations of the same capability.
+Huntarr was part of the original idea but was not present in that inventory, so
+it remains an optional future adapter rather than a claimed active dependency.
+Other download clients, request managers, indexers, media servers, notification
+providers, and health tools can implement the same capability contracts.
+
+## Sign in once with Jellyfin
+
+People do not create a second Arrmate account. The sign-in form sends their
+Jellyfin username and password to an Arrmate server action, which immediately
+exchanges them through Jellyseerr. The password is never stored or returned to
+browser code.
+
+Arrmate encrypts the resulting user-scoped Jellyseerr session in an HTTP-only
+cookie. Search, quotas, and requests then run as that person, preserving
+Jellyseerr attribution, movie/series permissions, approval rules, and limits.
+No Jellyseerr API key is needed for this flow.
 
 ## Permission model direction
 
@@ -54,8 +80,10 @@ Every mutation should be authorized server-side. Hiding a button is not authoriz
 The current implementation uses:
 
 - Next.js 16 with strict TypeScript for the web application and server boundary.
-- A custom responsive CSS design system with no external font or image request.
+- A custom responsive CSS and original SVG brand system with no external font request.
 - PostgreSQL for Arrmate-owned users, sessions, permissions, quotas, integrations, request records, audit events, and cached normalized state.
+- AES-256-GCM authenticated encryption for the user-scoped Jellyseerr session cookie.
+- A server-only, response-validated Jellyseerr adapter for sign-in, health, live search, quotas, requests, and logout.
 - Typed adapter interfaces and capability checks so unsupported service features degrade gracefully.
 - A server-only, response-validated qBittorrent adapter for live queue and transfer data.
 - Docker-first local development and tests at the domain, adapter, authorization, and browser workflow boundaries.
@@ -77,7 +105,14 @@ tests/
 NEXT_PROMPT.md
 ```
 
-The current slice deliberately keeps qBittorrent read-only and leaves discovery disconnected until a real provider is configured. Queue mutations, media deletion/replacement, and production authentication are future audited workflows—not placeholder buttons.
+The current slice deliberately keeps qBittorrent read-only. Discovery stays
+disconnected until `SEERR_URL` points to an authorized Jellyseerr instance.
+Queue mutations, media deletion/replacement, subtitle operations, user-limit
+editing, and request history are future audited workflows—not placeholder
+success states. Series requests currently request all seasons.
+
+Original editable identity assets live in [`public/assets/`](./public/assets/):
+the app mark, lockup, orbit illustration, installable icons, and social card.
 
 ## Safety and privacy
 
@@ -101,7 +136,20 @@ npm run db:migrate
 npm run dev
 ```
 
-Node.js 22 or newer and npm 10 are supported. No integration is required to open the app; unconfigured services show a disconnected state. To use the live qBittorrent read path, replace only the qBittorrent placeholders in `.env.local` with an authorized server URL and credentials.
+Node.js 22 or newer and npm 10 are supported. No integration is required to
+open the app; unconfigured services show a disconnected state.
+
+Generate real development secrets before testing sign-in:
+
+```bash
+openssl rand -base64 48 # use for AUTH_SECRET
+openssl rand -base64 32 # use for NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+```
+
+Set `SEERR_URL` to an authorized Jellyseerr base URL to enable Jellyfin sign-in,
+discovery, quotas, and requests. Set the qBittorrent variables to enable the
+read-only live operations path. All integration variables are server-only;
+never prefix them with `NEXT_PUBLIC_`.
 
 Before contributing, run:
 

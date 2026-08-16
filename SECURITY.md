@@ -26,6 +26,19 @@ Do not include active API keys, passwords, private URLs, media libraries, or use
 - Redact authorization headers, cookies, passwords, and API keys from logs.
 - Keep dependencies patched and review adapter changes carefully.
 
+## Authentication boundary
+
+Arrmate currently signs people in through Jellyseerr's Jellyfin authentication
+endpoint. The password is exchanged once by a server action and is not stored.
+The resulting Jellyseerr session is sealed with AES-256-GCM inside an HTTP-only
+Arrmate cookie. Treat `AUTH_SECRET` as a production encryption key: make it
+high-entropy, keep it consistent across replicas, and never commit it.
+
+This design preserves each person's Jellyseerr permissions, attribution, and
+quota. It does not make an internet-facing development deployment production
+safe. Authentication rate limiting, deployment origin policy, and broader
+session lifecycle controls remain release blockers.
+
 ## Scope
 
 The project is early. The absence of a published release does not mean a deployment is safe by default. Operators are responsible for network exposure, TLS, identity provider configuration, backups, and upstream service permissions.

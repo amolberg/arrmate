@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Arrmate</title>
+  <rect x="5" y="5" width="54" height="54" rx="17" fill="#F07D57"/>
+  <path d="M16 36.5C16 28.49 22.49 22 30.5 22h14" fill="none" stroke="#20130F" stroke-width="4" stroke-linecap="round" opacity=".25"/>
+  <rect x="18" y="32" width="6" height="14" rx="3" fill="#20130F"/>
+  <rect x="29" y="24" width="6" height="22" rx="3" fill="#20130F"/>
+  <rect x="40" y="16" width="6" height="30" rx="3" fill="#20130F"/>
+  <circle cx="18" cy="23" r="3" fill="#FFF7F2"/>
+</svg>

@@ -35,8 +35,8 @@ const settings = [
   {
     icon: KeyRound,
     title: "Authentication",
-    copy: "Replace local sign-in with your identity provider",
-    tag: "Local development",
+    copy: "Jellyfin credentials via Jellyseerr",
+    tag: "Server-side session",
   },
 ];
 

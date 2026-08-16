@@ -3,6 +3,7 @@ import "server-only";
 import type { DownloadOverview } from "@/domain/downloads";
 import type { AdapterError, IntegrationSummary } from "@/domain/integrations";
 
+import { jellyseerrFromEnvironment } from "./integrations/jellyseerr";
 import { qBittorrentFromEnvironment } from "./integrations/qbittorrent";
 
 export interface OperationsSnapshot {
@@ -47,37 +48,64 @@ const plannedIntegrations: IntegrationSummary[] = [
     health: "not-configured",
     detail: "Subtitle provider is not configured",
   },
+  {
+    id: "lidarr",
+    name: "Lidarr",
+    kind: "media-manager",
+    health: "not-configured",
+    detail: "Music manager adapter is not configured",
+  },
+  {
+    id: "cleanuparr",
+    name: "Cleanuparr",
+    kind: "maintenance",
+    health: "not-configured",
+    detail: "Queue maintenance adapter is not configured",
+  },
+  {
+    id: "unmanic",
+    name: "Unmanic",
+    kind: "transcoder",
+    health: "not-configured",
+    detail: "Transcoding adapter is not configured",
+  },
+  {
+    id: "flaresolverr",
+    name: "FlareSolverr",
+    kind: "indexer-helper",
+    health: "not-configured",
+    detail: "Indexer helper adapter is not configured",
+  },
+  {
+    id: "jfa",
+    name: "JFA",
+    kind: "access",
+    health: "not-configured",
+    detail: "Account helper adapter is not configured",
+  },
 ];
 
 export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
-  const adapter = qBittorrentFromEnvironment();
-  if (!adapter) {
-    return {
-      integrations: [
-        ...plannedIntegrations,
-        {
-          id: "qbittorrent",
-          name: "qBittorrent",
-          kind: "download-client",
-          health: "not-configured",
-          detail: "Download client connection is not configured",
-        },
-      ],
-      downloads: null,
-      downloadError: null,
-    };
-  }
-
-  const startedAt = performance.now();
-  const overview = await adapter.overview();
+  const qBittorrent = qBittorrentFromEnvironment();
+  const jellyseerr = jellyseerrFromEnvironment();
+  const qStartedAt = performance.now();
+  const seerrStartedAt = performance.now();
+  const [overview, seerrHealth] = await Promise.all([
+    qBittorrent ? qBittorrent.overview() : null,
+    jellyseerr ? jellyseerr.health() : null,
+  ]);
   const checkedAt = new Date();
-  const latencyMs = Math.round(performance.now() - startedAt);
 
-  if (!overview.ok) {
-    return {
-      integrations: [
-        ...plannedIntegrations,
-        {
+  const qBittorrentSummary: IntegrationSummary = !qBittorrent
+    ? {
+        id: "qbittorrent",
+        name: "qBittorrent",
+        kind: "download-client",
+        health: "not-configured",
+        detail: "Download client connection is not configured",
+      }
+    : overview && !overview.ok
+      ? {
           id: "qbittorrent",
           name: "qBittorrent",
           kind: "download-client",
@@ -85,31 +113,56 @@ export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
             overview.error.code === "authentication" ? "offline" : "degraded",
           detail: overview.error.message,
           checkedAt,
-          latencyMs,
-        },
-      ],
-      downloads: null,
-      downloadError: overview.error,
-    };
-  }
+          latencyMs: Math.round(performance.now() - qStartedAt),
+        }
+      : {
+          id: "qbittorrent",
+          name: "qBittorrent",
+          kind: "download-client",
+          health: "online",
+          detail:
+            overview && overview.ok && overview.data.items.length > 0
+              ? `Connected · ${overview.data.items.length} active item${overview.data.items.length === 1 ? "" : "s"}`
+              : "Connected · queue is empty",
+          checkedAt,
+          latencyMs: Math.round(performance.now() - qStartedAt),
+        };
+
+  const jellyseerrSummary: IntegrationSummary = !jellyseerr
+    ? {
+        id: "jellyseerr",
+        name: "Jellyseerr",
+        kind: "request-manager",
+        health: "not-configured",
+        detail: "Discovery and requests are not configured",
+      }
+    : seerrHealth && !seerrHealth.ok
+      ? {
+          id: "jellyseerr",
+          name: "Jellyseerr",
+          kind: "request-manager",
+          health: "degraded",
+          detail: seerrHealth.error.message,
+          checkedAt,
+          latencyMs: Math.round(performance.now() - seerrStartedAt),
+        }
+      : {
+          id: "jellyseerr",
+          name: "Jellyseerr",
+          kind: "request-manager",
+          health: "online",
+          detail: "Discovery, sign-in, and requests are ready",
+          checkedAt,
+          latencyMs: seerrHealth?.ok ? seerrHealth.data.latencyMs : undefined,
+        };
 
   return {
     integrations: [
       ...plannedIntegrations,
-      {
-        id: "qbittorrent",
-        name: "qBittorrent",
-        kind: "download-client",
-        health: "online",
-        detail:
-          overview.data.items.length === 0
-            ? "Connected · queue is empty"
-            : `Connected · ${overview.data.items.length} active item${overview.data.items.length === 1 ? "" : "s"}`,
-        checkedAt,
-        latencyMs,
-      },
+      jellyseerrSummary,
+      qBittorrentSummary,
     ],
-    downloads: overview.data,
-    downloadError: null,
+    downloads: overview?.ok ? overview.data : null,
+    downloadError: overview && !overview.ok ? overview.error : null,
   };
 }

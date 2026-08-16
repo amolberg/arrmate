@@ -7,12 +7,20 @@ import { getViewer } from "@/server/auth/session";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  ),
   title: {
     default: "Arrmate",
     template: "%s · Arrmate",
   },
   description: "The friendly control plane for your self-hosted media stack.",
   applicationName: "Arrmate",
+  openGraph: {
+    title: "Arrmate",
+    description: "Your media stack, finally in one place.",
+    images: [{ url: "/assets/arrmate-social.png", width: 1200, height: 630 }],
+  },
 };
 
 export const viewport: Viewport = {

@@ -16,6 +16,16 @@ security boundary. Sessions must use HTTP-only, secure, same-site cookies in
 production. Authentication and public request endpoints require rate limiting
 and CSRF-aware design.
 
+The Jellyfin password enters only the Arrmate server action and is immediately
+exchanged through Jellyseerr. It must never be logged, cached, persisted, added
+to an error message, or returned to client JavaScript. The resulting upstream
+session cookie is encrypted and authenticated inside the Arrmate cookie, but it
+still carries the user's authority and must be handled like a credential.
+
+`AUTH_SECRET` protects provider sessions. It must be high-entropy, at least 32
+characters, stable across instances, and rotated with the understanding that a
+rotation signs everyone out. TLS is required for any non-local deployment.
+
 ### Arrmate to upstream services
 
 Credentials stay server-side and must be encrypted at rest before database
@@ -45,7 +55,8 @@ protect anonymous searching, requests, and sign-in attempts.
 
 ## Deferred work before production
 
-- Replace development sign-in with an OIDC or similarly mature identity flow.
+- Add authentication rate limits, lockout-aware responses, and session
+  revocation/refresh behavior around the Jellyfin-through-Jellyseerr flow.
 - Keep `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` stable and secret across instances.
 - Encrypt stored integration credentials and define key rotation.
 - Add CSRF and deployment-aware origin validation to mutations.

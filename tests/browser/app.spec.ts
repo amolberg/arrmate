@@ -25,6 +25,26 @@ test("mobile layout does not overflow horizontally", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("sign-in uses Jellyfin identity and is honest when unconfigured", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await expect(
+    page.getByRole("heading", { name: "Welcome to Arrmate." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Arrmate home" }).first(),
+  ).toBeVisible();
+  await expect(page.getByLabel("Jellyfin username")).toBeDisabled();
+  await expect(page.getByLabel("Password", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Sign in with Jellyfin" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("The server owner still needs to configure Jellyseerr."),
+  ).toBeVisible();
+});
+
 test("local owner session can open honest operations state", async ({
   page,
 }) => {
@@ -34,4 +54,6 @@ test("local owner session can open honest operations state", async ({
   await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
   await expect(page.getByText("qBittorrent is not connected")).toBeVisible();
   await expect(page.getByText("Not connected").first()).toBeVisible();
+  await expect(page.getByText("Jellyseerr", { exact: true })).toBeVisible();
+  await expect(page.getByText("Lidarr", { exact: true })).toBeVisible();
 });

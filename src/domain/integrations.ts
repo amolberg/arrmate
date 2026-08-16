@@ -5,6 +5,10 @@ export const integrationKinds = [
   "subtitle-provider",
   "request-manager",
   "download-client",
+  "maintenance",
+  "transcoder",
+  "access",
+  "indexer-helper",
 ] as const;
 
 export type IntegrationKind = (typeof integrationKinds)[number];

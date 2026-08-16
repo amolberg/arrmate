@@ -11,13 +11,22 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
 import { can } from "@/domain/auth";
-import { getViewer } from "@/server/auth/session";
+import type { SeerrQuotaWindow } from "@/domain/discovery";
+import { getProviderSession, getViewer } from "@/server/auth/session";
+import { jellyseerrFromEnvironment } from "@/server/integrations/jellyseerr";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const viewer = await getViewer();
   const isOperator = can(viewer, "operations:view");
+  const session = await getProviderSession();
+  const adapter = jellyseerrFromEnvironment();
+  const quotaResult =
+    session && adapter
+      ? await adapter.quota(session.user.id, session.upstreamCookie)
+      : null;
+  const quota = quotaResult?.ok ? quotaResult.data : null;
 
   return (
     <div className="page-stack">
@@ -75,8 +84,10 @@ export default async function HomePage() {
           </span>
           <div>
             <span>Movie requests</span>
-            <strong>—</strong>
-            <small>Limit loads after setup</small>
+            <strong>{quota ? quotaValue(quota.movie) : "—"}</strong>
+            <small>
+              {quota ? quotaCaption(quota.movie) : "Sign in to see your limit"}
+            </small>
           </div>
         </article>
         <article className="quota-card">
@@ -85,8 +96,10 @@ export default async function HomePage() {
           </span>
           <div>
             <span>Series requests</span>
-            <strong>—</strong>
-            <small>Limit loads after setup</small>
+            <strong>{quota ? quotaValue(quota.series) : "—"}</strong>
+            <small>
+              {quota ? quotaCaption(quota.series) : "Sign in to see your limit"}
+            </small>
           </div>
         </article>
       </section>
@@ -116,4 +129,13 @@ export default async function HomePage() {
       </section>
     </div>
   );
+}
+
+function quotaValue(quota: SeerrQuotaWindow): string {
+  return quota.limit ? String(quota.remaining ?? 0) : "∞";
+}
+
+function quotaCaption(quota: SeerrQuotaWindow): string {
+  if (!quota.limit) return "No request limit";
+  return `${quota.used} of ${quota.limit} used${quota.days ? ` · ${quota.days}d window` : ""}`;
 }

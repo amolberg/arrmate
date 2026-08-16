@@ -3,11 +3,33 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 import type { Role, Viewer } from "@/domain/auth";
 import { roles } from "@/domain/auth";
+import type { JellyseerrLogin } from "@/adapters/jellyseerr";
+import { roleFromSeerrPermissions } from "@/domain/seerr-permissions";
 
-const COOKIE_NAME = "arrmate-dev-session";
+import { sealSession, unsealSession } from "./session-crypto";
+
+const DEV_COOKIE_NAME = "arrmate-dev-session";
+const SESSION_COOKIE_NAME = "arrmate-session";
+const SESSION_SECONDS = 60 * 60 * 12;
+
+const providerSessionSchema = z.object({
+  version: z.literal(1),
+  provider: z.literal("jellyseerr"),
+  user: z.object({
+    id: z.number().int().positive(),
+    displayName: z.string().min(1),
+    permissions: z.number().int().nonnegative(),
+    avatarPath: z.string().nullable(),
+  }),
+  upstreamCookie: z.string().startsWith("connect.sid="),
+  expiresAt: z.number().int().positive(),
+});
+
+export type ProviderSession = z.infer<typeof providerSessionSchema>;
 
 const developmentViewers: Record<Role, Viewer> = {
   owner: {
@@ -34,10 +56,16 @@ const developmentViewers: Record<Role, Viewer> = {
 
 function key(): string {
   const configured = process.env.AUTH_SECRET;
-  if (configured) return configured;
+  if (
+    configured &&
+    configured.length >= 32 &&
+    !configured.startsWith("replace-with")
+  ) {
+    return configured;
+  }
   if (process.env.NODE_ENV !== "production")
     return "arrmate-development-only-session-key";
-  throw new Error("AUTH_SECRET is required in production");
+  throw new Error("A strong AUTH_SECRET is required in production");
 }
 
 function signature(payload: string): string {
@@ -81,23 +109,67 @@ export function developmentAuthEnabled(): boolean {
 }
 
 export async function getViewer(): Promise<Viewer> {
-  const token = (await cookies()).get(COOKIE_NAME)?.value;
+  const providerSession = await getProviderSession();
+  if (providerSession) {
+    return {
+      id: `jellyseerr:${providerSession.user.id}`,
+      name: providerSession.user.displayName,
+      role: roleFromSeerrPermissions(providerSession.user.permissions),
+    };
+  }
+
+  const token = (await cookies()).get(DEV_COOKIE_NAME)?.value;
   const role = token ? decode(token) : null;
   return developmentViewers[role ?? "guest"];
+}
+
+export async function getProviderSession(): Promise<ProviderSession | null> {
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
+  const parsed = providerSessionSchema.safeParse(unsealSession(token, key()));
+  if (!parsed.success || parsed.data.expiresAt <= Date.now()) return null;
+  return parsed.data;
+}
+
+export async function setProviderSession(
+  login: JellyseerrLogin,
+): Promise<void> {
+  const expiresAt = Date.now() + SESSION_SECONDS * 1_000;
+  const value: ProviderSession = {
+    version: 1,
+    provider: "jellyseerr",
+    user: login.user,
+    upstreamCookie: login.sessionCookie,
+    expiresAt,
+  };
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, sealSession(value, key()), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_SECONDS,
+    priority: "high",
+  });
+  cookieStore.delete(DEV_COOKIE_NAME);
 }
 
 export async function setDevelopmentViewer(role: Role): Promise<void> {
   if (!developmentAuthEnabled())
     throw new Error("Development sign-in is disabled");
-  (await cookies()).set(COOKIE_NAME, encode(role), {
+  const cookieStore = await cookies();
+  cookieStore.set(DEV_COOKIE_NAME, encode(role), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 12,
   });
+  cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-export async function clearDevelopmentViewer(): Promise<void> {
-  (await cookies()).delete(COOKIE_NAME);
+export async function clearSessions(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(DEV_COOKIE_NAME);
+  cookieStore.delete(SESSION_COOKIE_NAME);
 }
