@@ -1,0 +1,192 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js / build output
+.next/
+out/
+dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime state and local databases
+.data/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs and local tooling
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+
+# Generated screenshots and test artifacts
+playwright-report/
+test-results/
+
+# Temporary files
+.tmp/
+tmp/
+.cache/
+
+# Local deployment overrides
+docker-compose.override.yml
+
+# Keep the repository free of credentials
+.credentials/
+secrets/
+
+# TypeScript build metadata
+*.tsbuildinfo
+next-env.d.ts
+
+# Do not commit private prompt scratchpads
+NEXT_PROMPT.local.md
+
+automation/
+
+# Environment-specific local configuration
+config/local.*
+config/*.local.*
+
+# Generated public assets (source assets belong in public/assets)
+public/generated/
+
+# Editor backups
+*~
+*.bak
+
+# Keep empty runtime directories out of Git
+runtime/
+
+# Local test media
+fixtures/media/
+
+# Python tooling if integration adapters use Python
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+
+# macOS / Windows
+Thumbs.db
+.DS_Store
+
+# Secret-bearing exports
+*.secret.json
+*.credentials.json
+
+# Local AI/coding agent state
+.claude/
+.codex/
+
+# Keep the root clean
+*.local.md
+
+# Allow the public template
+!.env.example
+
+# Do not ignore documentation
+!docs/
+!docs/**
+!NEXT_PROMPT.md
+!README.md
+!LICENSE
+!CONTRIBUTING.md
+!SECURITY.md
+!CODE_OF_CONDUCT.md
+!CHANGELOG.md
+!package.json
+!pnpm-lock.yaml
+!tsconfig.json
+!next.config.*
+!src/
+!src/**
+!public/
+!public/**
+!tests/
+!tests/**
+!docker/
+!docker/**
+!prisma/
+!prisma/**
+!migrations/
+!migrations/**
+!scripts/
+!scripts/**
+
+# Explicitly prevent common accidental secret files
+**/.env
+**/.env.*
+!**/.env.example
+**/*token*
+**/*password*
+**/*apikey*
+**/*api-key*
+**/*secret*
+**/*credential*
+!docs/**
+!**/*.example
+!**/*.template
+!**/*-example.*
+!**/*-template.*
+
+# Do not commit service exports or media metadata snapshots
+exports/
+backups/
+*.torrent
+*.nzb
+
+# Local generated images/videos
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.gif
+!public/assets/**/*.png
+!public/assets/**/*.jpg
+!public/assets/**/*.jpeg
+!public/assets/**/*.gif
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.gif
+
+# Keep sample fixtures explicitly opt-in
+!fixtures/**/*.json
+!fixtures/**/*.yaml
+!fixtures/**/*.yml
+
+# Local package manager files
+.yarn/
+.pnp.*
+
+# Deployment secrets and state
+.coolify/
+.dokploy/
+.terraform/
+*.tfstate*
+
+# OS mount / editor state
+.nfs*
+.directory
+
+# Scratch planning files
+PLAN.local.md
+DESIGN.local.md
+
+# End of intentionally boring, security-first ignore rules
