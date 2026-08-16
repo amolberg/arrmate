@@ -2,13 +2,13 @@
 
 **The friendly control plane for your self-hosted media stack.**
 
-Arrmate is a planned open-source, mobile-first management experience for Jellyfin ecosystems. It brings discovery, requests, downloads, library health, subtitle workflows, and service operations into one fast interface instead of making people jump between a pile of separate dashboards.
+Arrmate is an open-source, mobile-first management experience for Jellyfin ecosystems. It brings discovery, requests, downloads, library health, subtitle workflows, and service operations into one fast interface instead of making people jump between a pile of separate dashboards.
 
-> **Status:** early project foundation. This repository currently contains product direction and the implementation handoff prompt. It is not yet connected to a live media stack and does not pretend otherwise.
+> **Status:** first working vertical slice. The responsive requester and operator surfaces, role model, PostgreSQL schema, atomic quota core, and read-only qBittorrent adapter are implemented. Other integrations remain honest disconnected states.
 
 ## The idea
 
-The name comes from the *arr* family of services and a friendly companion that helps keep a homelab media setup moving. The product should feel like a polished native app on a phone, while remaining useful on tablets, desktop browsers, and eventually any device with a modern web browser.
+The name comes from the _arr_ family of services and a friendly companion that helps keep a homelab media setup moving. The product should feel like a polished native app on a phone, while remaining useful on tablets, desktop browsers, and eventually any device with a modern web browser.
 
 Arrmate is inspired by the unified feel of nzb360, but the goal is a self-hosted, open-source product with a first-class request experience rather than a basic launcher for separate services.
 
@@ -49,40 +49,35 @@ Arrmate should support at least these conceptual roles:
 
 Every mutation should be authorized server-side. Hiding a button is not authorization.
 
-## Suggested technical direction
+## Technical foundation
 
-The implementation handoff should validate the details, but the working direction is:
+The current implementation uses:
 
-- Next.js with TypeScript for the web application and API boundary.
-- Tailwind CSS plus shadcn/ui primitives, with a custom Arrmate visual system rather than an untouched component template.
+- Next.js 16 with strict TypeScript for the web application and server boundary.
+- A custom responsive CSS design system with no external font or image request.
 - PostgreSQL for Arrmate-owned users, sessions, permissions, quotas, integrations, request records, audit events, and cached normalized state.
-- A background job/refresh layer for polling and reconciling external services without blocking the UI.
 - Typed adapter interfaces and capability checks so unsupported service features degrade gracefully.
-- Docker-first local development with an explicit `.env.example` and no credentials in Git.
-- Tests at the domain, adapter, authorization, and browser workflow boundaries.
+- A server-only, response-validated qBittorrent adapter for live queue and transfer data.
+- Docker-first local development and tests at the domain, adapter, authorization, and browser workflow boundaries.
 
-## Repository layout target
+## Repository layout
 
 ```text
 src/
   app/                 # routes and screens
   components/          # reusable UI
-  features/            # vertical product slices
   server/              # application services and adapter orchestration
   adapters/            # external service integrations
   db/                  # schema, migrations, repositories
-  lib/                 # shared utilities and typed contracts
-  styles/              # design tokens and global styles
 docs/
   product/             # product and UX decisions
   architecture/        # system and adapter decisions
   plans/               # implementation plans
-public/
 tests/
 NEXT_PROMPT.md
 ```
 
-This is a direction, not permission to build every future feature in the first milestone. The first implementation should establish a trustworthy vertical slice: authentication/roles, service connection health, a mobile dashboard, media search, a request, and a visible live download status.
+The current slice deliberately keeps qBittorrent read-only and leaves discovery disconnected until a real provider is configured. Queue mutations, media deletion/replacement, and production authentication are future audited workflows—not placeholder buttons.
 
 ## Safety and privacy
 
@@ -96,18 +91,30 @@ Arrmate is intended for self-hosted deployments. Integrations will handle powerf
 - avoid assuming that an internet-facing deployment is safe merely because the UI has a login page;
 - provide a threat model and deployment security documentation before calling a release production-ready.
 
-## Development
-
-The implementation has not started yet. Read [`NEXT_PROMPT.md`](./NEXT_PROMPT.md) for the next coding-AI handoff. The handoff is deliberately designed to begin with repository inspection, product decisions, and a small verified vertical slice rather than generating a large untested scaffold.
-
-When development begins, the expected local flow will be documented here and should include:
+## Local development
 
 ```bash
-cp .env.example .env
-# install dependencies using the committed package manager
-# start the local database and app
-# run lint, typecheck, unit tests, and browser tests
+npm install
+cp .env.example .env.local
+docker compose up -d postgres
+npm run db:migrate
+npm run dev
 ```
+
+Node.js 22 or newer and npm 10 are supported. No integration is required to open the app; unconfigured services show a disconnected state. To use the live qBittorrent read path, replace only the qBittorrent placeholders in `.env.local` with an authorized server URL and credentials.
+
+Before contributing, run:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run test:browser
+npm run build
+```
+
+Architecture, threat-model, product, and milestone decisions live under [`docs/`](./docs/).
 
 ## Contributing
 

@@ -1,4 +1,9 @@
-# Next coding-AI prompt: Arrmate foundation and first vertical slice
+# Completed handoff: Arrmate foundation and first vertical slice
+
+> This milestone was implemented and verified on 2026-08-16. It remains in
+> the repository as the acceptance record for the first vertical slice; it is
+> not the current next-step prompt. See `docs/plans/` and the README for the
+> implemented state.
 
 You are the implementation agent for **Arrmate**, an open-source, self-hosted, mobile-first media management control plane inspired by the unified feel of nzb360.
 
