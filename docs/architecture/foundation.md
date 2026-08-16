@@ -9,7 +9,7 @@ copying a password or silently becoming an administrator on the person's
 behalf. The *arr services, qBittorrent, and subtitle providers remain systems
 of record for their media and job state.
 
-The PostgreSQL schema provides a foundation for Arrmate-owned policy overlays,
+The optional PostgreSQL schema provides a foundation for Arrmate-owned policy overlays,
 integration configuration, normalized cached state, and audit events. Those
 records are not yet presented as live product state unless a repository is
 actually connected.
@@ -41,6 +41,12 @@ this milestone.
 The adapter currently reads deployment environment configuration. The future
 integration editor must encrypt credentials before persistence and emit audit
 events when an owner changes or tests a connection.
+
+Sonarr and Radarr use the same server-only boundary for a read-only system
+status check. Their API keys are sent in an `X-Api-Key` header, never in a URL
+or browser response. Invalid keys, unavailable hosts, timeouts, and malformed
+status payloads remain distinct adapter errors and are surfaced as offline or
+degraded service health in Operations.
 
 ## Jellyfin identity through Jellyseerr
 
@@ -83,3 +89,26 @@ conditional upserts inside one transaction. If any active bucket is full, the
 transaction rolls back. This prevents straightforward concurrent requests from
 oversubscribing a limit. The in-memory implementation exists only for isolated
 domain tests and development.
+
+## Encrypted local service store
+
+Arrmate ships with a `/setup` wizard so the operator can connect services
+without editing `.env.local` and redeploying. The wizard writes to
+`.data/managed-services.json` on the server, sealed with AES-256-GCM using
+the same key derivation as the user-scoped session cookie. The store is
+file-based, mode `0600`, and only readable by the Arrmate process.
+
+The adapter integration helpers in `src/server/integrations/*.ts` consult
+`configuredServices()` first and fall back to `process.env`. This keeps
+existing deployments working while letting new operators drive everything
+through the wizard.
+
+Every optional service URL/key is verified against the live upstream before
+being saved: a Radarr API key check, a Sonarr status probe, a Bazarr
+`/api/system/status` call, and a qBittorrent login. Failed checks return a
+typed `AdapterError` that the wizard renders as a friendly inline message
+without leaking the failure into other services.
+
+The wizard only reveals Radarr/Sonarr/Bazarr/qBittorrent inputs after a
+Jellyfin administrator sign-in. A sealed setup session cookie holds the
+verified Jellyfin token until the operator submits the second step.

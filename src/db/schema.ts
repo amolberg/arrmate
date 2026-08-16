@@ -1,5 +1,6 @@
 import {
   boolean,
+  bigint,
   index,
   integer,
   jsonb,
@@ -177,4 +178,15 @@ export const auditEvents = pgTable(
   (table) => [
     index("audit_events_actor_created_idx").on(table.actorId, table.createdAt),
   ],
+);
+
+export const transferSnapshots = pgTable(
+  "transfer_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sampledAt: timestamp("sampled_at", { withTimezone: true }).notNull(),
+    downloadedBytes: bigint("downloaded_bytes", { mode: "number" }).notNull(),
+    uploadedBytes: bigint("uploaded_bytes", { mode: "number" }).notNull(),
+  },
+  (table) => [index("transfer_snapshots_sampled_idx").on(table.sampledAt)],
 );

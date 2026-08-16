@@ -48,6 +48,11 @@ export default function SignInPage() {
           <p>Use the same credentials you already use to watch on Jellyfin.</p>
         </div>
         <JellyfinSignInForm configured={configured} />
+        {!configured && (
+          <Link className="text-link" href="/setup">
+            Need to connect Arrmate first? Run setup
+          </Link>
+        )}
         <Link className="text-link" href="/">
           Continue as guest
         </Link>

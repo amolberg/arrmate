@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import type {
   DiscoveryItem,
+  MediaDetails,
   DiscoveryPage,
   DiscoveryMediaType,
   SeerrQuota,
   SeerrRequestReceipt,
+  SeerrRequestActivity,
   SeerrUser,
 } from "@/domain/discovery";
 import type {
@@ -60,6 +62,32 @@ const searchResponseSchema = z.object({
   results: z.array(searchItemSchema),
 });
 
+const seasonSchema = z
+  .object({
+    seasonNumber: z.number().int().nonnegative(),
+    name: z.string().optional(),
+    episodeCount: z.number().int().nonnegative().optional().default(0),
+    airDate: z.string().optional().nullable(),
+    posterPath: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+const mediaDetailsSchema = z
+  .object({
+    id: z.number().int().positive(),
+    title: z.string().optional(),
+    name: z.string().optional(),
+    overview: z.string().optional().default(""),
+    releaseDate: z.string().optional().nullable(),
+    firstAirDate: z.string().optional().nullable(),
+    posterPath: z.string().optional().nullable(),
+    backdropPath: z.string().optional().nullable(),
+    voteAverage: z.number().optional().nullable(),
+    mediaInfo: mediaInfoSchema,
+    seasons: z.array(seasonSchema).optional().default([]),
+  })
+  .passthrough();
+
 const quotaWindowSchema = z.object({
   days: z.number().nonnegative().nullable().default(null),
   limit: z.number().nonnegative().nullable().default(null),
@@ -77,6 +105,27 @@ const requestReceiptSchema = z.object({
   id: z.number().int().positive(),
   status: z.number().int(),
 });
+
+const requestActivitySchema = z.object({
+  id: z.number().int().positive(),
+  status: z.number().int().optional().default(1),
+  createdAt: z.string().optional().nullable(),
+  media: z
+    .object({
+      mediaType: z.string(),
+      tmdbId: z.number().int().positive().optional(),
+      title: z.string().optional(),
+      name: z.string().optional(),
+      posterPath: z.string().optional().nullable(),
+    })
+    .passthrough(),
+});
+
+const requestActivityResponseSchema = z
+  .object({
+    results: z.array(requestActivitySchema),
+  })
+  .passthrough();
 
 export interface JellyseerrConfig {
   baseUrl: string;
@@ -137,6 +186,15 @@ function requestStatus(status: number): SeerrRequestReceipt["status"] {
   if (status === 1) return "pending";
   if (status === 2) return "approved";
   if (status === 3) return "declined";
+  return "unknown";
+}
+
+function activityStatus(status: number): SeerrRequestActivity["status"] {
+  if (status === 1) return "pending";
+  if (status === 2) return "approved";
+  if (status === 3) return "declined";
+  if (status === 4 || status === 5) return "available";
+  if (status < 0) return "failed";
   return "unknown";
 }
 
@@ -269,10 +327,109 @@ export class JellyseerrAdapter implements IntegrationAdapter {
     }
   }
 
+  async details(
+    mediaId: number,
+    mediaType: DiscoveryMediaType,
+    sessionCookie: string,
+  ): Promise<AdapterResult<MediaDetails>> {
+    const upstreamType = mediaType === "series" ? "tv" : "movie";
+    const response = await this.request(
+      `/api/v1/${upstreamType}/${mediaId}`,
+      sessionCookie,
+    );
+    if (!response.ok) return response;
+    if (!response.data.ok) return this.httpError(response.data.status);
+    try {
+      const result = mediaDetailsSchema.parse(await response.data.json());
+      const title = mediaType === "movie" ? result.title : result.name;
+      if (!title) throw new Error("Missing title");
+      const date =
+        mediaType === "movie" ? result.releaseDate : result.firstAirDate;
+      return {
+        ok: true,
+        data: {
+          id: result.id,
+          mediaType,
+          title,
+          overview: result.overview,
+          year: date?.slice(0, 4) || null,
+          posterPath: result.posterPath || null,
+          backdropPath: result.backdropPath || null,
+          rating:
+            typeof result.voteAverage === "number" ? result.voteAverage : null,
+          availability: result.mediaInfo?.status ?? null,
+          seasons: result.seasons
+            .filter((season) => season.seasonNumber > 0)
+            .map((season) => ({
+              seasonNumber: season.seasonNumber,
+              name: season.name || `Season ${season.seasonNumber}`,
+              episodeCount: season.episodeCount,
+              airDate: season.airDate || null,
+              posterPath: season.posterPath || null,
+            })),
+        },
+      };
+    } catch {
+      return errorResult(
+        "malformed-response",
+        "Jellyseerr returned media details Arrmate could not validate",
+        true,
+      );
+    }
+  }
+
+  async activity(
+    sessionCookie: string,
+    take = 20,
+  ): Promise<AdapterResult<SeerrRequestActivity[]>> {
+    const boundedTake = Math.max(1, Math.min(50, Math.trunc(take)));
+    const response = await this.request(
+      `/api/v1/request?take=${boundedTake}&skip=0&sort=modified`,
+      sessionCookie,
+    );
+    if (!response.ok) return response;
+    if (!response.data.ok) return this.httpError(response.data.status);
+    try {
+      const result = requestActivityResponseSchema.parse(
+        await response.data.json(),
+      );
+      return {
+        ok: true,
+        data: result.results.flatMap((request) => {
+          const mediaType =
+            request.media.mediaType === "movie"
+              ? "movie"
+              : request.media.mediaType === "tv"
+                ? "series"
+                : null;
+          const title = request.media.title || request.media.name;
+          if (!mediaType || !title) return [];
+          return [
+            {
+              id: request.id,
+              title,
+              mediaType,
+              status: activityStatus(request.status),
+              posterPath: request.media.posterPath || null,
+              createdAt: request.createdAt || null,
+            },
+          ];
+        }),
+      };
+    } catch {
+      return errorResult(
+        "malformed-response",
+        "Jellyseerr returned invalid request activity",
+        true,
+      );
+    }
+  }
+
   async createRequest(
     mediaId: number,
     mediaType: DiscoveryMediaType,
     sessionCookie: string,
+    seasons?: number[],
   ): Promise<AdapterResult<SeerrRequestReceipt>> {
     const response = await this.request("/api/v1/request", sessionCookie, {
       method: "POST",
@@ -280,7 +437,7 @@ export class JellyseerrAdapter implements IntegrationAdapter {
       body: JSON.stringify({
         mediaId,
         mediaType: mediaType === "series" ? "tv" : "movie",
-        ...(mediaType === "series" ? { seasons: "all" } : {}),
+        ...(mediaType === "series" ? { seasons: seasons ?? "all" } : {}),
       }),
     });
     if (!response.ok) return response;

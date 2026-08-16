@@ -1,12 +1,20 @@
 "use client";
 
-import { Activity, Compass, House, RadioTower, Settings2 } from "lucide-react";
+import {
+  Activity,
+  Compass,
+  Film,
+  House,
+  RadioTower,
+  Settings2,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const baseItems = [
   { href: "/", label: "Home", icon: House },
   { href: "/discover", label: "Discover", icon: Compass },
+  { href: "/media", label: "Media", icon: Film },
   { href: "/activity", label: "Activity", icon: Activity },
 ];
 

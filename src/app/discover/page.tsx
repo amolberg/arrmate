@@ -10,7 +10,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-import { createMediaRequest } from "@/app/actions";
 import { EmptyState } from "@/components/empty-state";
 import type { DiscoveryItem } from "@/domain/discovery";
 import { canRequestThroughSeerr } from "@/domain/seerr-permissions";
@@ -188,7 +187,9 @@ function MediaCard({
       </div>
       <div className="media-card-copy">
         <div className="media-title">
-          <strong>{item.title}</strong>
+          <Link href={`/discover/${item.mediaType}/${item.id}`}>
+            <strong>{item.title}</strong>
+          </Link>
           <span>{item.year ?? "—"}</span>
         </div>
         {item.rating !== null && (
@@ -203,18 +204,17 @@ function MediaCard({
           </span>
         ) : alreadyRequested ? (
           <span className="availability processing">Already requested</span>
+        ) : canRequest ? (
+          <Link
+            className="request-button"
+            href={`/discover/${item.mediaType}/${item.id}`}
+          >
+            View details
+          </Link>
         ) : (
-          <form action={createMediaRequest}>
-            <input type="hidden" name="mediaId" value={item.id} />
-            <input type="hidden" name="mediaType" value={item.mediaType} />
-            <button
-              className="request-button"
-              type="submit"
-              disabled={!canRequest}
-            >
-              Request {item.mediaType}
-            </button>
-          </form>
+          <span className="request-button disabled-link" aria-disabled="true">
+            Requests unavailable
+          </span>
         )}
       </div>
     </article>

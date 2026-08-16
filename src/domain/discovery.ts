@@ -19,6 +19,18 @@ export interface DiscoveryPage {
   items: DiscoveryItem[];
 }
 
+export interface MediaSeason {
+  seasonNumber: number;
+  name: string;
+  episodeCount: number;
+  airDate: string | null;
+  posterPath: string | null;
+}
+
+export interface MediaDetails extends DiscoveryItem {
+  seasons: MediaSeason[];
+}
+
 export interface SeerrUser {
   id: number;
   displayName: string;
@@ -42,4 +54,14 @@ export interface SeerrQuota {
 export interface SeerrRequestReceipt {
   id: number;
   status: "pending" | "approved" | "declined" | "unknown";
+}
+
+export interface SeerrRequestActivity {
+  id: number;
+  title: string;
+  mediaType: DiscoveryMediaType;
+  status:
+    "pending" | "approved" | "available" | "declined" | "failed" | "unknown";
+  posterPath: string | null;
+  createdAt: string | null;
 }

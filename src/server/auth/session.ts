@@ -26,6 +26,13 @@ const providerSessionSchema = z.object({
     avatarPath: z.string().nullable(),
   }),
   upstreamCookie: z.string().startsWith("connect.sid="),
+  jellyfin: z
+    .object({
+      token: z.string().min(1),
+      userId: z.string().min(1),
+      isAdministrator: z.boolean(),
+    })
+    .optional(),
   expiresAt: z.number().int().positive(),
 });
 
@@ -133,6 +140,7 @@ export async function getProviderSession(): Promise<ProviderSession | null> {
 
 export async function setProviderSession(
   login: JellyseerrLogin,
+  jellyfin?: { token: string; userId: string; isAdministrator: boolean },
 ): Promise<void> {
   const expiresAt = Date.now() + SESSION_SECONDS * 1_000;
   const value: ProviderSession = {
@@ -140,6 +148,7 @@ export async function setProviderSession(
     provider: "jellyseerr",
     user: login.user,
     upstreamCookie: login.sessionCookie,
+    jellyfin,
     expiresAt,
   };
   const cookieStore = await cookies();

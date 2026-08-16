@@ -4,11 +4,13 @@
 
 Arrmate is an open-source, mobile-first management experience for Jellyfin ecosystems. It brings discovery, requests, downloads, library health, subtitle workflows, and service operations into one fast interface instead of making people jump between a pile of separate dashboards.
 
-> **Status:** early working vertical slice. Jellyfin credential sign-in,
-> Jellyseerr-powered discovery/requests/quotas, responsive requester and
-> operator surfaces, the PostgreSQL domain foundation, and a read-only
-> qBittorrent adapter are implemented. Unconfigured integrations stay in
-> honest disconnected states.
+> **Status:** full MVP ready for self-hosted install. Jellyfin/Jellyseerr
+> sign-in, discovery, requests with season selection, basarr subtitle
+> management, Sonarr/Radarr interactive release search and replace, full
+> library browsing with file/quality visibility, qBittorrent queue and
+> transfer stats, and Jellyfin admin user/reset/history workflows are all
+> wired against real services. The first-run `/setup` wizard verifies each
+> service live before persisting encrypted credentials.
 
 ![Arrmate — your media stack, finally in one place](./public/assets/arrmate-social.png)
 
@@ -86,6 +88,9 @@ The current implementation uses:
 - A server-only, response-validated Jellyseerr adapter for sign-in, health, live search, quotas, requests, and logout.
 - Typed adapter interfaces and capability checks so unsupported service features degrade gracefully.
 - A server-only, response-validated qBittorrent adapter for live queue and transfer data.
+- A server-only, response-validated Sonarr/Radarr adapter for series, movies, episodes, files, release search, blocking, and interactive grab/replace.
+- A server-only, response-validated Bazarr adapter for series/movie subtitles, search, downloads, and deletion.
+- AES-256-GCM encrypted, file-based credential storage so the `/setup` wizard can persist service URLs/keys without a redeploy.
 - Docker-first local development and tests at the domain, adapter, authorization, and browser workflow boundaries.
 
 ## Repository layout
@@ -105,11 +110,13 @@ tests/
 NEXT_PROMPT.md
 ```
 
-The current slice deliberately keeps qBittorrent read-only. Discovery stays
-disconnected until `SEERR_URL` points to an authorized Jellyseerr instance.
-Queue mutations, media deletion/replacement, subtitle operations, user-limit
-editing, and request history are future audited workflows—not placeholder
-success states. Series requests currently request all seasons.
+The current slice exposes Sonarr/Radarr media browsing and interactive
+release search with grab + blocklist. Bazarr subtitle download/delete and
+media file deletion are guarded behind the operator role and audited.
+qBittorrent serves a live queue plus aggregated transfer stats (day, week,
+month, year), persisting snapshots to either PostgreSQL or in-memory when
+the database is unavailable. Discovery stays disconnected until
+`SEERR_URL` points to an authorized Jellyseerr instance.
 
 Original editable identity assets live in [`public/assets/`](./public/assets/):
 the app mark, lockup, orbit illustration, installable icons, and social card.
@@ -131,13 +138,20 @@ Arrmate is intended for self-hosted deployments. Integrations will handle powerf
 ```bash
 npm install
 cp .env.example .env.local
-docker compose up -d postgres
-npm run db:migrate
 npm run dev
 ```
 
-Node.js 22 or newer and npm 10 are supported. No integration is required to
-open the app; unconfigured services show a disconnected state.
+Then open `http://localhost:3000/setup` and follow the wizard. The first
+step signs in with Jellyseerr + Jellyfin. If the signed-in account is an
+administrator, the second step shows live-verified inputs for Radarr,
+Sonarr, Bazarr, and qBittorrent. Each optional service is tested against
+the real upstream before being saved to the encrypted local credential
+store.
+
+Node.js 22 or newer and npm 10 are supported. No database is required:
+without PostgreSQL, audit and transfer history stay in the running
+Arrmate process. Environment variables still work as a fallback if you
+prefer to keep credentials in `.env.local`.
 
 Generate real development secrets before testing sign-in:
 

@@ -1,6 +1,7 @@
 import {
   Activity,
   ArrowDown,
+  Film,
   Gauge,
   HardDrive,
   RefreshCw,
@@ -39,6 +40,9 @@ export default async function OperationsPage() {
           <h1>Operations</h1>
           <p className="page-lead">The pulse of your media pipeline.</p>
         </div>
+        <Link className="secondary-button desktop-only" href="/media">
+          <Film size={16} /> Browse media
+        </Link>
         <Link className="secondary-button desktop-only" href="/settings">
           <Settings2 size={16} /> Manage services
         </Link>
@@ -89,6 +93,43 @@ export default async function OperationsPage() {
             <strong>{snapshot.downloads?.items.length ?? "—"}</strong>
           </div>
         </article>
+      </section>
+
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Transfer history</p>
+            <h2>Traffic totals</h2>
+          </div>
+          <span className="fresh-label">
+            {snapshot.transferStats
+              ? "Persisted snapshots"
+              : "Database required"}
+          </span>
+        </div>
+        <div className="transfer-grid">
+          {(["day", "week", "month", "year"] as const).map((period) => {
+            const stats = snapshot.transferStats?.[period];
+            return (
+              <article className="transfer-card" key={period}>
+                <small>Past {period}</small>
+                <strong>
+                  {stats ? formatBytes(stats.downloadedBytes) : "—"}
+                  <span> down</span>
+                </strong>
+                <strong>
+                  {stats ? formatBytes(stats.uploadedBytes) : "—"}
+                  <span> up</span>
+                </strong>
+                <p>
+                  {stats
+                    ? `${stats.sampleCount} samples`
+                    : "Run PostgreSQL migrations to begin history"}
+                </p>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <section className="section-block">

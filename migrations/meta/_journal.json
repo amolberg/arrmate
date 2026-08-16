@@ -8,6 +8,13 @@
       "when": 1786848815547,
       "tag": "0000_familiar_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786851000000,
+      "tag": "0001_transfer_snapshots",
+      "breakpoints": true
     }
   ]
 }

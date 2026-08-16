@@ -150,6 +150,44 @@ describe("Jellyseerr adapter", () => {
     });
   });
 
+  it("normalizes series details and excludes the specials season", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        id: 42,
+        name: "A Series",
+        firstAirDate: "2024-02-01",
+        overview: "A serialized story",
+        voteAverage: 8.4,
+        seasons: [
+          { seasonNumber: 0, name: "Specials", episodeCount: 2 },
+          {
+            seasonNumber: 1,
+            name: "Season 1",
+            episodeCount: 8,
+            airDate: "2024-02-01",
+            posterPath: "/season.jpg",
+          },
+        ],
+      }),
+    ) as unknown as typeof fetch;
+    const result = await adapter(fetchMock).details(
+      42,
+      "series",
+      "connect.sid=test",
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        title: "A Series",
+        mediaType: "series",
+        seasons: [{ seasonNumber: 1, episodeCount: 8 }],
+      },
+    });
+    expect(pathname(vi.mocked(fetchMock).mock.calls[0][0])).toBe(
+      "/api/v1/tv/42",
+    );
+  });
+
   it("requests every season for the initial series request flow", async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({ id: 99, status: 1 }, { status: 201 }),
@@ -167,6 +205,59 @@ describe("Jellyseerr adapter", () => {
       mediaType: "tv",
       seasons: "all",
     });
+  });
+
+  it("sends an explicit season selection for a series request", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({ id: 100, status: 1 }, { status: 201 }),
+    ) as unknown as typeof fetch;
+    await adapter(fetchMock).createRequest(
+      42,
+      "series",
+      "connect.sid=test",
+      [1, 3],
+    );
+    const [, init] = vi.mocked(fetchMock).mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      mediaId: 42,
+      mediaType: "tv",
+      seasons: [1, 3],
+    });
+  });
+
+  it("normalizes request activity and skips unsupported media", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        pageInfo: { results: 2 },
+        results: [
+          {
+            id: 12,
+            status: 2,
+            createdAt: "2026-08-16T10:00:00.000Z",
+            media: {
+              mediaType: "movie",
+              title: "A Film",
+              posterPath: "/film.jpg",
+            },
+          },
+          {
+            id: 13,
+            status: 1,
+            media: { mediaType: "person", name: "Ignored" },
+          },
+        ],
+      }),
+    ) as unknown as typeof fetch;
+    const result = await adapter(fetchMock).activity("connect.sid=test");
+    expect(result).toMatchObject({
+      ok: true,
+      data: [
+        { id: 12, title: "A Film", mediaType: "movie", status: "approved" },
+      ],
+    });
+    expect(pathname(vi.mocked(fetchMock).mock.calls[0][0])).toBe(
+      "/api/v1/request?take=20&skip=0&sort=modified",
+    );
   });
 
   it("distinguishes an upstream timeout", async () => {
