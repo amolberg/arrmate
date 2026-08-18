@@ -1,9 +1,9 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Arrmate agent instructions
 
-# This is NOT the Next.js you know
+Arrmate is a native Android application. Use Kotlin, Jetpack Compose, Android platform APIs, and direct on-device service clients.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+- Never introduce Next.js, React, a WebView, an embedded website, or a required Arrmate backend.
+- The Android device connects directly to Jellyfin, Jellyseerr, Sonarr, Radarr, Bazarr, qBittorrent, and future services.
+- Store secrets with Android Keystore-backed authenticated encryption and never log them.
+- Keep homelab failures explicit; do not show fake data or fake success states.
+- Verify changes with the Gradle wrapper and preserve native accessibility and adaptive layouts.
